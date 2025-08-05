@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truth or Dare or a lil More</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Dark background */
+        }
+        .buzzer-gradient {
+            background-image: linear-gradient(
+                45deg,
+                #FF8A00,
+                #E20B8C,
+                #A20BDE,
+                #0B75E2,
+                #00B6FF
+            );
+            background-size: 400% 400%;
+            animation: buzzer-animate 5s ease infinite;
+        }
+
+        @keyframes buzzer-animate {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .spin-pulse {
+            animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.9);
+                box-shadow: 0 0 0 0 rgba(255, 138, 0, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(255, 138, 0, 0);
+            }
+            100% {
+                transform: scale(0.9);
+                box-shadow: 0 0 0 0 rgba(255, 138, 0, 0);
+            }
+        }
+
+        .avatar-placeholder {
+            background-image: url('https://placehold.co/100x100/F0F2F5/A0C4FF?text=Player');
+            background-size: cover;
+        }
+
+        .modal {
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+        }
+
+        .modal-content {
+            animation: modal-fade-in 0.3s ease-out;
+        }
+        
+        @keyframes modal-fade-in {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .disabled-btn {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <!-- Main Game Container -->
+    <div id="game-container" class="relative w-full max-w-4xl bg-gray-800 rounded-3xl shadow-2xl p-6 md:p-10 flex flex-col items-center">
+
+        <!-- Fixed Buttons -->
+        <div class="fixed bottom-4 left-4 z-50">
+            <button id="restart-game-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition-all transform hover:scale-105">
+                Restart Game
+            </button>
+        </div>
+        <div class="fixed bottom-4 right-4 z-50">
+            <button id="end-game-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow-lg transition-all transform hover:scale-105">
+                End Game
+            </button>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen text-center transition-opacity duration-500">
+            <h1 class="text-4xl md:text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
+                Welcome to unadulterated fun, it’s R-45 from here oh!
+            </h1>
+            <p class="text-lg md:text-xl text-gray-400 mb-8">Get ready for a game of truths, dares, and a little more.</p>
+            <button id="start-game-btn" class="px-8 py-4 text-xl md:text-2xl font-bold rounded-full shadow-2xl bg-white text-gray-900 transition-all transform hover:scale-110">
+                Start Game
+            </button>
+        </div>
+
+        <!-- Player Setup Screen -->
+        <div id="player-setup-screen" class="screen hidden w-full">
+            <h2 class="text-3xl font-bold mb-6 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">Player Setup</h2>
+            <div id="players-list" class="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
+                <!-- Player inputs will be added here dynamically -->
+            </div>
+            <div class="flex flex-col md:flex-row gap-4 mt-6">
+                <button id="add-player-btn" class="w-full md:w-auto flex-1 px-6 py-3 font-bold rounded-full bg-indigo-500 hover:bg-indigo-600 transition-all transform hover:scale-105">
+                    Add Player
+                </button>
+                <button id="next-to-scoreboard-btn" class="w-full md:w-auto flex-1 px-6 py-3 font-bold rounded-full bg-emerald-500 hover:bg-emerald-600 transition-all transform hover:scale-105">
+                    Next
+                </button>
+            </div>
+        </div>
+
+        <!-- Scoreboard Screen -->
+        <div id="scoreboard-screen" class="screen hidden w-full text-center">
+            <h2 class="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-red-400">Scoreboard</h2>
+            <div id="score-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto">
+                <!-- Scoreboard items will be added here dynamically -->
+            </div>
+            <button id="next-from-scoreboard-btn" class="mt-8 px-8 py-4 text-xl font-bold rounded-full bg-white text-gray-900 transition-all transform hover:scale-110">
+                Return to Game
+            </button>
+        </div>
+
+        <!-- Gameplay Screen -->
+        <div id="gameplay-screen" class="screen hidden w-full text-center">
+            <div class="flex flex-col items-center mb-6">
+                <div class="w-24 h-24 rounded-full overflow-hidden mb-2 shadow-xl border-4 border-white">
+                    <img id="current-player-avatar" class="w-full h-full object-cover" src="" alt="Player Avatar">
+                </div>
+                <h3 id="current-player-name" class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-400"></h3>
+            </div>
+            
+            <div id="question-area" class="min-h-[150px] flex items-center justify-center p-4">
+                <p id="question-text" class="text-xl md:text-2xl font-semibold italic text-gray-300"></p>
+                <div id="loading-spinner" class="hidden animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-gray-200 border-t-indigo-500"></div>
+            </div>
+
+            <div id="main-options" class="mt-4 space-y-4">
+                <div class="flex justify-center gap-4">
+                    <button id="truth-btn" class="px-6 py-3 font-bold rounded-full bg-blue-500 hover:bg-blue-600 transition-all transform hover:scale-105">Truth</button>
+                    <button id="dare-btn" class="px-6 py-3 font-bold rounded-full bg-red-500 hover:bg-red-600 transition-all transform hover:scale-105">Dare</button>
+                </div>
+                <div class="flex justify-center items-center gap-4">
+                    <span class="text-lg font-bold">Level:</span>
+                    <button id="level-1-btn" class="level-btn px-4 py-2 font-bold rounded-full bg-gray-600 hover:bg-gray-500 transition-all">1</button>
+                    <button id="level-2-btn" class="level-btn px-4 py-2 font-bold rounded-full bg-gray-600 hover:bg-gray-500 transition-all">2</button>
+                    <button id="level-3-btn" class="level-btn px-4 py-2 font-bold rounded-full bg-gray-600 hover:bg-gray-500 transition-all" disabled>3</button>
+                </div>
+                <button id="show-scoreboard-btn" class="px-6 py-3 font-bold rounded-full bg-gray-600 hover:bg-gray-500 transition-all transform hover:scale-105">
+                    Scoreboard
+                </button>
+            </div>
+
+            <div id="question-action-buttons" class="hidden mt-8 flex justify-center gap-4 flex-wrap">
+                <button id="done-btn" class="px-6 py-3 font-bold rounded-full bg-emerald-500 hover:bg-emerald-600 transition-all transform hover:scale-105">
+                    ✅ Done
+                </button>
+                <button id="drink-btn" class="px-6 py-3 font-bold rounded-full bg-yellow-500 hover:bg-yellow-600 transition-all transform hover:scale-105">
+                    ❌ Drink
+                </button>
+                <button id="too-easy-btn" class="px-6 py-3 font-bold rounded-full bg-purple-500 hover:bg-purple-600 transition-all transform hover:scale-105">
+                    🔁 Too Easy
+                </button>
+            </div>
+        </div>
+
+        <!-- End Game Screen -->
+        <div id="end-game-screen" class="screen hidden w-full text-center">
+            <h2 class="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500">Game Over!</h2>
+            <div id="final-scoreboard" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                <!-- Final scores and winner will be displayed here -->
+            </div>
+            <h3 id="winner-text" class="text-3xl font-bold mt-8 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-red-400"></h3>
+        </div>
+
+    </div>
+
+    <!-- Custom Modal for Messages -->
+    <div id="custom-modal" class="modal fixed inset-0 flex items-center justify-center z-50">
+        <div class="modal-content bg-gray-800 rounded-xl p-8 shadow-2xl text-center w-full max-w-sm">
+            <p id="modal-message" class="text-xl font-semibold mb-6"></p>
+            <button id="modal-ok-btn" class="px-6 py-2 font-bold rounded-full bg-indigo-500 hover:bg-indigo-600 transition-all transform hover:scale-105">OK</button>
+        </div>
+    </div>
+
+<script>
+    window.onload = function() {
+        // --- Game Data and Questions ---
+        const QUESTIONS = {
+            'truth': {
+                1: [
+                    "Have you ever had a crush on someone in this room?", "What’s the most daring thing you've worn in public?", "Have you ever sent a flirty message and regretted it?", "What’s your biggest turn-on in someone’s appearance?", "Would you rather go on a secret date or a public one with someone risky?", "Have you ever been tempted to kiss someone you shouldn’t have?", "What’s your favorite part of the opposite sex’s body — and why?", "Have you ever flirted your way out of trouble?", "What’s the most romantic or sexy dream you’ve ever had?", "If you had to go on a date with someone here, who would you pick and why?", "What’s the cheesiest pick-up line you’ve secretly liked?", "What’s your guilty pleasure when you’re attracted to someone?", "Do you like it when someone takes control or plays hard to get?", "What’s something romantic or flirty that you’ve done that actually worked?", "Have you ever had a fantasy about someone at work, school, or church?", "What’s the most exciting compliment you’ve received from the opposite sex?", "Who in this room do you think is most likely to be a good kisser?", "Would you ever go skinny dipping if no one would find out?", "What’s the most spontaneous flirty move you’ve made?", "What’s a subtle but sexy thing you notice when you're attracted to someone?", "What’s the boldest way you've shown someone you liked them?", "Have you ever been caught checking someone out?", "If someone here slid into your DMs, who would make your heart race a little?", "What's a song that instantly puts you in a flirty mood?", "Have you ever had butterflies around someone in this group?", "What’s a harmless lie you’ve told to impress someone you liked?", "What outfit or look makes you feel your sexiest?", "Have you ever pretended not to like someone just to hide your feelings?", "What’s something non-physical that instantly attracts you to someone?", "If you could steal one kiss without consequences, who would it be from?"
+                ],
+                2: [
+                    "What’s your favorite sex position — and why?", "Have you ever had sex outdoors or in a risky place?", "How many people have you kissed in one day?", "Do you enjoy being dominant or submissive in bed?", "What’s your biggest sexual fantasy that you’ve never told anyone?", "Have you ever had phone sex, and how did it go?", "Have you ever masturbated to someone you know personally?", "What's the kinkiest thing you’ve ever tried in bed?", "How loud are you during sex — be honest?", "Have you ever had a one-night stand you still think about?", "What body part do you most enjoy being kissed or touched?", "What’s your favorite type of dirty talk to hear?", "Have you ever tried role-play — and what role did you play?", "Have you ever watched adult content with a partner?", "If you had to pick a fetish, what would it be?", "How often do you think about sex in a day?", "Have you ever hooked up with someone and forgot their name?", "What’s the naughtiest thought you’ve had during a normal conversation?", "Have you ever wanted to sleep with a friend but didn’t?", "Do you like being teased or doing the teasing?", "Have you ever fantasized about someone in a position of power over you?", "What’s the most risqué photo or video you’ve ever taken?", "Have you ever had sex in a place where you might have been caught?", "If you had to describe your best sexual experience in one word, what would it be?", "What is your secret move that you think drives people wild?", "Have you ever had sex with someone you didn’t expect to enjoy — but did?", "Have you ever said someone else's name in bed by mistake?", "Would you rather a long night of foreplay or a quick wild round?", "What’s the most adventurous place you’ve fantasized about having sex?"
+                ],
+                3: [
+                    "Describe in full detail the wildest sex dream you've ever had — who was in it, what happened, and how did it end?", "What’s the dirtiest thing you’ve ever whispered during sex — say it now like you meant it.", "Which part of your body do you secretly wish someone would obsess over — and what should they do to it?", "If someone here had to tie you up and take control, who would you choose — and what would you beg them to do?", "Describe your most intense orgasm — what triggered it and what sounds did you make?", "Have you ever secretly touched yourself thinking about someone in this room? Say who and what you imagined.", "If we turned off the lights right now, who would you sneak over to — and what would you do to them?", "What’s something sexual you’ve never done, but fantasize about regularly?", "Pick someone in the group and describe in detail how you’d seduce them from start to finish.", "What’s the naughtiest thing you've ever done with someone in public or semi-public — be honest and specific."
+                ]
+            },
+            'dare': {
+                1: [
+                    "Give a slow shoulder massage to someone of your choice for 30 seconds.", "Do a 2-minute sensual slow dance to a song of your choice.", "Sit facing someone and maintain deep eye contact for 60 seconds without laughing.", "Let everyone watch as you perform your sexiest dance move.", "Maintain close eye contact while someone slowly runs a finger down your arm.", "Let someone guide your hands to 'read their body like braille' (clothes on).", "Kiss someone lightly on the neck or shoulder, then kiss them on the lips for a few seconds.", "Share a secret desire with someone in private — whisper it close to their ear.", "Do a slow spin while someone watches and describes what they like most about you.", "Sit beside someone and move on their lap or leg to music — you can exchange places if you want.", "Blindfold yourself and guess who touches you (on the arm or face) just by feel.", "Put your head on someone’s chest and stay there for 30 seconds.", "Let someone adjust your hair or outfit as if prepping you for a date.", "Hold someone's hand and describe what you'd do if you were alone together for one hour.", "Play a flirty staring contest — loser gives a peck on the cheek.", "Show someone how you’d seduce a crush with just body language.", "Pretend you’re on a romantic movie set — do a dramatic pose with someone.", "Let someone lightly trace your lips or jawline with a feather or finger.", "Lie beside someone on the floor without touching for 1 minute — highest tension wins.", "Sit face to face with someone and tell them one thing you’d love to try with them.", "Whisper something seductive into the ear of someone you're most attracted to.", "Sit on someone’s lap and maintain eye contact for 20 seconds — no talking.", "Dance closely with someone for 1 minute — your choice of song and style.", "Lie on the floor and let someone draw on your body (clothes on) using their finger.", "Play “guess the item” — someone puts an object in a bag, and you feel it blindfolded.", "Blow softly on someone’s neck or ear — they must stay completely still.", "Get behind someone and hold their waist while swaying to a song — 30 seconds.", "Do a slow, teasing body roll or belly dance in front of the group.", "Let someone feed you something sweet with their hands — no utensils.", "Pick someone to hold your waist and guide you in a slow dance for 1 minute, no speaking allowed."
+                ],
+                2: [
+                    "Sit in front of someone and let them caress your thighs (over clothing) for 30 seconds.", "Allow someone to lick or kiss any body part of your choice.", "Do a slow full-body rubdown on someone — clothes stay on.", "Simulate oral teasing using either an ice cube or two fingers on someone’s arm or neck.", "Trace the person’s lips with your tongue, then kiss them deeply.", "Choose someone and demonstrate how you’d ride them — fully clothed, no grinding.", "Do a strip tease — remove one clothing item slowly for 90 seconds while everyone watches.", "Sit between someone’s legs, let them stroke your waist, and kiss for 30 seconds.", "Let someone touch and caress you however they like for 30 seconds.", "Do a slow, seductive strip tease — no full nudity.", "Do a dirty grind dance on someone for 30 seconds.", "Kiss and lightly bite someone’s ear while whispering something naughty for 30 seconds.", "Simulate a passionate make-out scene with someone for 30 seconds.", "Pick someone and do a body shot — then kiss for 30 seconds.", "Play the 'word moan' game — whisper a dirty word and moan after it for 4 rounds.", "Switch seats with someone and sit on their lap for the next two turns.", "Use your tongue to slowly trace a shape on someone's neck or stomach and let them guess it.", "Get on all fours while someone 'guides' your waist with their hands — 20 seconds.", "Let someone press their body against yours and guide you in a dirty grind — 30 seconds.", "Give someone a slow dance and end it with a passionate kiss.", "Give someone a slow, grinding lap dance for 60 seconds — their hands must stay on the chair.", "Lie face down and let someone grind lightly on you to the beat of a song — 30 seconds.", "With music on, pick a partner and dance as close as possible without fully touching.", "Let someone suck or lick something off your collarbone, shoulder, or stomach.", "Stand blindfolded while someone runs their hands along your sides and hips for 30 seconds.", "Simulate a slow-motion bedroom scene (no clothes removed) — 20 seconds with a partner.", "Choose someone and take turns whispering your wildest fantasies into each other’s ear.", "Place your hands on a partner's waist and grind from behind while they keep their hands behind their head — 45 seconds.", "Pick someone and take turns licking a small fruit (grape, strawberry) — no biting.", "Have a dirty dancing contest — each player has 30 seconds to seduce the others with only body movement."
+                ],
+                3: [
+                    "Let someone pull your shirt up and trace slow circles on your bare chest or back with their tongue for 20 seconds.", "Lay flat. Let someone straddle you and simulate the full rhythm of sex while maintaining eye contact — 45 seconds.", "Stand facing a wall. Let someone come up behind you and grind against you like they mean it — 1 full minute.", "Go into a corner with someone for 90 seconds. Come back and describe (or act) what just happened — be vivid.", "Choose someone. Let them slowly unzip or unbutton your outfit halfway while narrating what they’d do next.", "Do a “mirror” strip tease with someone — one of you moves, the other copies every move (only clothing below waist stays on).", "Lie down. Let someone of your choice kiss and tease their way from your neck to your belly button — 30 seconds.", "Choose someone. They will “command” your hands for 1 minute — guiding them anywhere on their own body.", "Pick someone. Press your body fully against theirs and simulate slow, heavy breathing during sex for 30 seconds.", "Sit in the middle. One person grinds from the front, another from behind — all fully clothed — 45 seconds rotation."
+                ]
+            }
+        };
+
+        const SCORES = {
+            'truth': { 1: 5, 2: 10, 3: 15 },
+            'dare': { 1: 10, 2: 20, 3: 30 },
+            'drink': { 1: -5, 2: -10, 3: -15 }
+        };
+
+        const AVATAR_COLORS = ['A0C4FF', 'FFD6A5', 'FDFFB6', 'CAFFBF', '9BF6FF', 'BDB2FF', 'FFC6FF', 'FFFFFC'];
+        
+        let gameState = {
+            players: [],
+            currentPlayerIndex: 0,
+            currentRound: 0,
+            questionType: null,
+            questionLevel: 1,
+            usedQuestions: [],
+            gameStarted: false,
+        };
+
+        // --- DOM Elements ---
+        const screens = {
+            start: document.getElementById('start-screen'),
+            playerSetup: document.getElementById('player-setup-screen'),
+            scoreboard: document.getElementById('scoreboard-screen'),
+            gameplay: document.getElementById('gameplay-screen'),
+            endGame: document.getElementById('end-game-screen'),
+        };
+
+        const elements = {
+            startButton: document.getElementById('start-game-btn'),
+            playerList: document.getElementById('players-list'),
+            addPlayerButton: document.getElementById('add-player-btn'),
+            nextToScoreboardButton: document.getElementById('next-to-scoreboard-btn'),
+            scoreboardList: document.getElementById('score-list'),
+            nextFromScoreboardButton: document.getElementById('next-from-scoreboard-btn'),
+            endGameButton: document.getElementById('end-game-btn'),
+            restartGameButton: document.getElementById('restart-game-btn'),
+            currentPlayerAvatar: document.getElementById('current-player-avatar'),
+            currentPlayerName: document.getElementById('current-player-name'),
+            truthBtn: document.getElementById('truth-btn'),
+            dareBtn: document.getElementById('dare-btn'),
+            levelButtons: document.querySelectorAll('.level-btn'),
+            showScoreboardBtn: document.getElementById('show-scoreboard-btn'),
+            questionArea: document.getElementById('question-area'),
+            questionText: document.getElementById('question-text'),
+            loadingSpinner: document.getElementById('loading-spinner'),
+            mainOptions: document.getElementById('main-options'),
+            actionButtons: document.getElementById('question-action-buttons'),
+            doneBtn: document.getElementById('done-btn'),
+            drinkBtn: document.getElementById('drink-btn'),
+            tooEasyBtn: document.getElementById('too-easy-btn'),
+            finalScoreboard: document.getElementById('final-scoreboard'),
+            winnerText: document.getElementById('winner-text'),
+            modal: document.getElementById('custom-modal'),
+            modalMessage: document.getElementById('modal-message'),
+            modalOkBtn: document.getElementById('modal-ok-btn')
+        };
+        
+        // --- TTS & Audio Functions ---
+        // Helper to convert base64 to ArrayBuffer
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // Helper to convert PCM to WAV
+        function pcmToWav(pcmData, sampleRate) {
+            const pcm16 = new Int16Array(pcmData);
+            const dataLength = pcm16.byteLength;
+            const buffer = new ArrayBuffer(44 + dataLength);
+            const view = new DataView(buffer);
+
+            // WAV header
+            let offset = 0;
+            function writeString(str) {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset++, str.charCodeAt(i));
+                }
+            }
+            function writeUint32(value) {
+                view.setUint32(offset, value, true); offset += 4;
+            }
+            function writeUint16(value) {
+                view.setUint16(offset, value, true); offset += 2;
+            }
+
+            writeString('RIFF'); // ChunkID
+            writeUint32(36 + dataLength); // ChunkSize
+            writeString('WAVE'); // Format
+            writeString('fmt '); // Subchunk1ID
+            writeUint32(16); // Subchunk1Size
+            writeUint16(1); // AudioFormat
+            writeUint16(1); // NumChannels
+            writeUint32(sampleRate); // SampleRate
+            writeUint32(sampleRate * 2); // ByteRate
+            writeUint16(2); // BlockAlign
+            writeUint16(16); // BitsPerSample
+            writeString('data'); // Subchunk2ID
+            writeUint32(dataLength); // Subchunk2Size
+
+            // PCM data
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(offset, pcm16[i], true); offset += 2;
+            }
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        async function playTTS(text, voiceName) {
+            try {
+                const payload = {
+                    contents: [{ parts: [{ text }] }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: { prebuiltVoiceConfig: { voiceName } }
+                        }
+                    },
+                    model: "gemini-2.5-flash-preview-tts"
+                };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const wavBlob = pcmToWav(pcmData, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    const audio = new Audio(audioUrl);
+                    await audio.play();
+                    
+                    return new Promise(resolve => {
+                        audio.onended = resolve;
+                    });
+                } else {
+                    console.error("Invalid TTS response format or content missing.");
+                    return Promise.resolve();
+                }
+            } catch (e) {
+                console.error("Error with TTS API call:", e);
+                return Promise.resolve();
+            }
+        }
+        
+        function showModal(message) {
+            elements.modalMessage.innerText = message;
+            elements.modal.style.display = 'flex';
+        }
+
+        function hideModal() {
+            elements.modal.style.display = 'none';
+        }
+
+        function renderScreen(screenName) {
+            Object.values(screens).forEach(screen => screen.classList.add('hidden'));
+            screens[screenName].classList.remove('hidden');
+        }
+
+        function addPlayer() {
+            if (gameState.players.length >= 8) {
+                showModal("Maximum of 8 players reached.");
+                return;
+            }
+            const newPlayerId = gameState.players.length + 1;
+            const newPlayer = {
+                id: newPlayerId,
+                name: `Player ${newPlayerId}`,
+                gender: 'unspecified',
+                score: 0,
+                daresInBlock: 0,
+                truthsInBlock: 0,
+                higherLevelInBlock: false,
+                totalTurns: 0
+            };
+            gameState.players.push(newPlayer);
+            renderPlayerSetup();
+        }
+
+        function renderPlayerSetup() {
+            elements.playerList.innerHTML = '';
+            gameState.players.forEach((player, index) => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = "flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4 p-4 bg-gray-700 rounded-lg shadow-md";
+                
+                const avatarUrl = `https://placehold.co/80x80/${AVATAR_COLORS[index]}/ffffff?text=${player.name.charAt(0)}`;
+                
+                playerDiv.innerHTML = `
+                    <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-indigo-400">
+                        <img src="${avatarUrl}" class="w-full h-full object-cover" alt="Player Avatar">
+                    </div>
+                    <input type="text" value="${player.name}" data-index="${index}" class="player-name-input flex-1 px-4 py-2 bg-gray-600 rounded-full text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Player Name">
+                    <select data-index="${index}" class="player-gender-select px-4 py-2 bg-gray-600 rounded-full text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="unspecified" ${player.gender === 'unspecified' ? 'selected' : ''}>Gender</option>
+                        <option value="male" ${player.gender === 'male' ? 'selected' : ''}>Male</option>
+                        <option value="female" ${player.gender === 'female' ? 'selected' : ''}>Female</option>
+                    </select>
+                `;
+                elements.playerList.appendChild(playerDiv);
+            });
+        }
+
+        function savePlayerDetails() {
+            const nameInputs = document.querySelectorAll('.player-name-input');
+            const genderSelects = document.querySelectorAll('.player-gender-select');
+            
+            nameInputs.forEach((input, index) => {
+                gameState.players[index].name = input.value.trim() || `Player ${index + 1}`;
+            });
+
+            genderSelects.forEach((select, index) => {
+                gameState.players[index].gender = select.value;
+            });
+        }
+        
+        function renderScoreboard() {
+            elements.scoreboardList.innerHTML = '';
+            gameState.players.forEach((player, index) => {
+                const avatarUrl = `https://placehold.co/80x80/${AVATAR_COLORS[index]}/ffffff?text=${player.name.charAt(0)}`;
+                const scoreItem = document.createElement('div');
+                scoreItem.className = "flex flex-col items-center p-4 bg-gray-700 rounded-xl shadow-md";
+                scoreItem.innerHTML = `
+                    <div class="w-20 h-20 rounded-full overflow-hidden mb-2 border-2 border-indigo-400">
+                        <img src="${avatarUrl}" class="w-full h-full object-cover" alt="Player Avatar">
+                    </div>
+                    <h4 class="text-lg font-bold truncate">${player.name}</h4>
+                    <p class="text-2xl font-bold text-green-400">${player.score}</p>
+                `;
+                elements.scoreboardList.appendChild(scoreItem);
+            });
+        }
+        
+        function updateGameplayUI() {
+            const player = gameState.players[gameState.currentPlayerIndex];
+            elements.currentPlayerName.innerText = player.name;
+            const avatarUrl = `https://placehold.co/80x80/${AVATAR_COLORS[gameState.currentPlayerIndex]}/ffffff?text=${player.name.charAt(0)}`;
+            elements.currentPlayerAvatar.src = avatarUrl;
+        
+            // Reset state
+            elements.questionText.innerText = '';
+            elements.mainOptions.classList.remove('hidden');
+            elements.actionButtons.classList.add('hidden');
+            elements.truthBtn.classList.remove('disabled-btn');
+            elements.dareBtn.classList.remove('disabled-btn');
+            elements.truthBtn.disabled = false;
+            elements.dareBtn.disabled = false;
+            elements.levelButtons.forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('bg-indigo-500', 'disabled-btn');
+            });
+            selectLevelButton(1); // Default to level 1
+        
+            // Apply Rules
+            const currentBlock = Math.floor(gameState.currentRound / gameState.players.length / 3) + 1;
+            
+            // Rule 1: Must play a Dare once per block
+            if (player.truthsInBlock >= 2) {
+                showModal(`${player.name}, you must select a Dare this turn to complete the block!`);
+                elements.truthBtn.disabled = true;
+                elements.truthBtn.classList.add('disabled-btn');
+            }
+
+            // Rule 2: Must play a higher level once per block after Block 2
+            if (currentBlock > 2 && !player.higherLevelInBlock) {
+                elements.levelButtons.forEach(btn => {
+                    if (parseInt(btn.innerText) === 1) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled-btn');
+                    }
+                });
+                showModal(`${player.name}, you must select a level higher than 1 for this turn!`);
+            }
+            
+            // Rule 3: Level 3 is only available from Block 3 onwards
+            if (currentBlock < 3) {
+                document.getElementById('level-3-btn').disabled = true;
+                document.getElementById('level-3-btn').classList.add('disabled-btn');
+            }
+            
+            renderScreen('gameplay');
+        }
+        
+        function selectLevelButton(level) {
+            elements.levelButtons.forEach(btn => btn.classList.remove('bg-indigo-500'));
+            document.getElementById(`level-${level}-btn`).classList.add('bg-indigo-500');
+            gameState.questionLevel = level;
+        }
+
+        function getQuestion(type, level) {
+            const availableQuestions = QUESTIONS[type][level].filter(q => !gameState.usedQuestions.includes(q));
+            if (availableQuestions.length === 0) {
+                showModal("No more questions available for this level! Please choose a different level or type.");
+                return null;
+            }
+            const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+            const question = availableQuestions[randomIndex];
+            gameState.usedQuestions.push(question);
+            return question;
+        }
+
+        async function nextTurn() {
+            if (gameState.players.length === 0) {
+                endGame();
+                return;
+            }
+
+            const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+            currentPlayer.totalTurns++;
+            
+            // Check for new block
+            if (currentPlayer.totalTurns > 0 && currentPlayer.totalTurns % 3 === 0) {
+                // Reset block counters for this player
+                currentPlayer.daresInBlock = 0;
+                currentPlayer.truthsInBlock = 0;
+                currentPlayer.higherLevelInBlock = false;
+            }
+
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+            gameState.currentRound++;
+            
+            updateGameplayUI();
+        }
+        
+        function endGame() {
+            renderScreen('endGame');
+            elements.finalScoreboard.innerHTML = '';
+            gameState.players.sort((a, b) => b.score - a.score);
+            const winner = gameState.players[0];
+
+            gameState.players.forEach((player, index) => {
+                const avatarUrl = `https://placehold.co/80x80/${AVATAR_COLORS[index]}/ffffff?text=${player.name.charAt(0)}`;
+                const scoreItem = document.createElement('div');
+                scoreItem.className = `flex flex-col items-center p-4 bg-gray-700 rounded-xl shadow-md ${player === winner ? 'border-4 border-yellow-400' : ''}`;
+                scoreItem.innerHTML = `
+                    <div class="w-20 h-20 rounded-full overflow-hidden mb-2">
+                        <img src="${avatarUrl}" class="w-full h-full object-cover" alt="Player Avatar">
+                    </div>
+                    <h4 class="text-lg font-bold truncate">${player.name}</h4>
+                    <p class="text-2xl font-bold text-green-400">${player.score}</p>
+                `;
+                elements.finalScoreboard.appendChild(scoreItem);
+            });
+
+            elements.winnerText.innerText = `The winner is ${winner.name} with ${winner.score} points!`;
+        }
+        
+        async function getAndDisplayQuestion(type, level) {
+            elements.questionText.innerText = '';
+            elements.loadingSpinner.classList.remove('hidden');
+
+            const voiceText = type === 'truth' ? "Say in a slightly freaky, yet playful female voice: Truth" : "Say in a husky, sexy male voice: Dare";
+            const voiceName = type === 'truth' ? "Laomedeia" : "Algenib";
+            
+            await playTTS(voiceText, voiceName);
+
+            const question = getQuestion(type, level);
+            elements.loadingSpinner.classList.add('hidden');
+            
+            if (question) {
+                elements.questionText.innerText = question;
+                elements.mainOptions.classList.add('hidden');
+                elements.actionButtons.classList.remove('hidden');
+                
+                elements.tooEasyBtn.disabled = level === 3;
+                elements.tooEasyBtn.classList.toggle('disabled-btn', level === 3);
+            } else {
+                elements.questionText.innerText = 'Something went wrong. Please try again.';
+                elements.mainOptions.classList.remove('hidden');
+                elements.actionButtons.classList.add('hidden');
+            }
+        }
+        
+        function showScoreboard() {
+            renderScoreboard();
+            renderScreen('scoreboard');
+        }
+
+        function initGame() {
+            // Reset game state
+            gameState = {
+                players: [],
+                currentPlayerIndex: 0,
+                currentRound: 0,
+                questionType: null,
+                questionLevel: 1,
+                usedQuestions: [],
+                gameStarted: false,
+            };
+            
+            // Start with a single player input
+            gameState.players.push({ id: 1, name: 'Player 1', gender: 'unspecified', score: 0, daresInBlock: 0, truthsInBlock: 0, higherLevelInBlock: false, totalTurns: 0 });
+            renderPlayerSetup();
+            renderScreen('start');
+        }
+
+        // --- Event Listeners ---
+        elements.startButton.addEventListener('click', () => {
+            renderScreen('playerSetup');
+        });
+
+        elements.addPlayerButton.addEventListener('click', addPlayer);
+
+        elements.nextToScoreboardButton.addEventListener('click', () => {
+            if (gameState.players.length === 0) {
+                showModal("Please add at least one player.");
+                return;
+            }
+            savePlayerDetails();
+            showScoreboard();
+        });
+
+        elements.nextFromScoreboardButton.addEventListener('click', () => {
+            gameState.gameStarted = true;
+            updateGameplayUI();
+        });
+        
+        elements.truthBtn.addEventListener('click', () => {
+            if (elements.truthBtn.disabled) return;
+            gameState.questionType = 'truth';
+            getAndDisplayQuestion(gameState.questionType, gameState.questionLevel);
+        });
+
+        elements.dareBtn.addEventListener('click', () => {
+            if (elements.dareBtn.disabled) return;
+            gameState.questionType = 'dare';
+            getAndDisplayQuestion(gameState.questionType, gameState.questionLevel);
+        });
+        
+        elements.levelButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const level = parseInt(btn.innerText);
+                const player = gameState.players[gameState.currentPlayerIndex];
+                const currentBlock = Math.floor(gameState.currentRound / gameState.players.length / 3) + 1;
+
+                if (currentBlock > 2 && !player.higherLevelInBlock && level === 1) {
+                    showModal("You must select a level higher than 1 in this block.");
+                    return;
+                }
+                selectLevelButton(level);
+            });
+        });
+
+        elements.showScoreboardBtn.addEventListener('click', showScoreboard);
+
+        elements.doneBtn.addEventListener('click', () => {
+            const player = gameState.players[gameState.currentPlayerIndex];
+            const scoreToAdd = SCORES[gameState.questionType][gameState.questionLevel];
+            player.score += scoreToAdd;
+
+            if (gameState.questionType === 'dare') {
+                player.daresInBlock++;
+            } else {
+                player.truthsInBlock++;
+            }
+            
+            if (gameState.questionLevel > 1) {
+                player.higherLevelInBlock = true;
+            }
+            
+            showModal(`Done! ${player.name} gets ${scoreToAdd} points.`);
+            
+            nextTurn();
+        });
+
+        elements.drinkBtn.addEventListener('click', () => {
+            const player = gameState.players[gameState.currentPlayerIndex];
+            const scoreToDeduct = SCORES['drink'][gameState.questionLevel];
+            player.score += scoreToDeduct;
+
+            if (gameState.questionType === 'dare') {
+                player.daresInBlock++;
+            } else {
+                player.truthsInBlock++;
+            }
+            
+            if (gameState.questionLevel > 1) {
+                player.higherLevelInBlock = true;
+            }
+
+            showModal(`Drink! ${player.name} loses ${Math.abs(scoreToDeduct)} points.`);
+            
+            nextTurn();
+        });
+
+        elements.tooEasyBtn.addEventListener('click', () => {
+            // Increment the level and get a new question from the same category
+            gameState.questionLevel++;
+            
+            if (gameState.questionLevel <= 3) {
+                selectLevelButton(gameState.questionLevel);
+                getAndDisplayQuestion(gameState.questionType, gameState.questionLevel);
+            } else {
+                // If it's already level 3, the button should be disabled, but just in case
+                gameState.questionLevel = 3;
+                elements.tooEasyBtn.disabled = true;
+                elements.tooEasyBtn.classList.add('disabled-btn');
+                showModal("You are already at the highest level!");
+            }
+        });
+
+        elements.endGameButton.addEventListener('click', () => {
+            if (gameState.gameStarted) {
+                endGame();
+            } else {
+                showModal("The game has not started yet.");
+            }
+        });
+        
+        elements.restartGameButton.addEventListener('click', () => {
+            initGame();
+        });
+        
+        elements.modalOkBtn.addEventListener('click', hideModal);
+
+        // --- Initialization ---
+        initGame();
+    };
+</script>
+</body>
+</html>
